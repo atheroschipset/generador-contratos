@@ -1,0 +1,677 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light dark;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style></head><body><title>Generador de Contratos</title>
+<style>
+/* Layout concept: a working form feeds a live "sheet of paper" contract preview below it; two signature pads sit at the foot of the sheet. */
+:root{
+  --bg:#eef1ec;
+  --paper:#fffdf8;
+  --ink:#242621;
+  --muted:#6b7066;
+  --accent:#2f5d4f;
+  --accent-ink:#f3f7f3;
+  --line:#d8dcd1;
+  --field-bg:#ffffff;
+  --danger:#9a4a3c;
+  --font-display:'Fraunces',Georgia,'Times New Roman',serif;
+  --font-body:'Inter',system-ui,-apple-system,sans-serif;
+  --font-doc:'Source Serif 4',Georgia,serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#15170f;
+    --paper:#1c1e18;
+    --ink:#eceee6;
+    --muted:#9ba093;
+    --accent:#7fb89f;
+    --accent-ink:#0f1a15;
+    --line:#33362c;
+    --field-bg:#20231b;
+    --danger:#e3a393;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#15170f;
+  --paper:#1c1e18;
+  --ink:#eceee6;
+  --muted:#9ba093;
+  --accent:#7fb89f;
+  --accent-ink:#0f1a15;
+  --line:#33362c;
+  --field-bg:#20231b;
+  --danger:#e3a393;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--ink);
+  font-family:var(--font-body);
+  padding-left:max(16px, env(safe-area-inset-left,0px));
+  padding-right:max(16px, env(safe-area-inset-right,0px));
+}
+.wrap{max-width:900px;margin:0 auto;padding-block:28px 56px}
+header.page{margin-bottom:22px}
+header.page h1{
+  font-family:var(--font-display);
+  font-weight:600;
+  font-size:clamp(1.6rem,4vw,2.1rem);
+  margin:0 0 6px;
+  text-wrap:balance;
+}
+header.page p{margin:0;color:var(--muted);font-size:.92rem;max-width:60ch}
+
+.layout{display:flex;flex-direction:column;gap:28px}
+
+.panel{
+  background:var(--field-bg);
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:20px;
+}
+.panel h2{
+  font-family:var(--font-display);
+  font-size:1.05rem;
+  font-weight:600;
+  margin:0 0 14px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.panel h2 .n{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:22px;height:22px;border-radius:50%;
+  background:var(--accent);color:var(--accent-ink);
+  font-family:var(--font-body);font-size:.72rem;font-weight:700;
+}
+
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:620px){.grid{grid-template-columns:1fr}}
+.field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.field.full{grid-column:1/-1}
+.field label{font-size:.78rem;color:var(--muted);font-weight:600;letter-spacing:.01em}
+.field input, .field textarea{
+  font-family:var(--font-body);
+  font-size:.92rem;
+  padding:9px 10px;
+  border-radius:8px;
+  border:1px solid var(--line);
+  background:var(--paper);
+  color:var(--ink);
+  width:100%;
+  resize:vertical;
+}
+.field input:focus, .field textarea:focus{outline:2px solid var(--accent);outline-offset:1px}
+.field textarea{min-height:64px;font-family:inherit;line-height:1.4}
+.hint{font-size:.74rem;color:var(--muted);margin-top:2px}
+
+.toggle-row{display:flex;align-items:flex-start;gap:10px;margin-top:4px}
+.toggle-row input[type=checkbox]{margin-top:3px;width:16px;height:16px;accent-color:var(--accent)}
+.toggle-row label{font-size:.85rem;color:var(--ink)}
+.toggle-row .sub{margin-top:8px}
+
+/* contract sheet */
+.sheet-shell{
+  background:var(--line);
+  border-radius:14px;
+  padding:clamp(10px,3vw,28px);
+}
+.sheet{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:var(--font-doc);
+  font-size:.95rem;
+  line-height:1.65;
+  padding:clamp(20px,5vw,48px);
+  border-radius:4px;
+  box-shadow:0 1px 3px rgba(0,0,0,.08), 0 10px 30px -18px rgba(0,0,0,.35);
+}
+.sheet h3{
+  font-family:var(--font-display);
+  text-align:center;
+  font-size:1.15rem;
+  margin:0 0 4px;
+  letter-spacing:.01em;
+}
+.sheet .sub-title{text-align:center;color:var(--muted);font-size:.8rem;margin:0 0 26px;font-family:var(--font-body)}
+.sheet .clause{margin:0 0 16px}
+.sheet .clause b{font-family:var(--font-body);font-weight:700}
+.sheet .clause-title{
+  font-family:var(--font-body);
+  font-weight:700;
+  font-size:.82rem;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+  color:var(--accent);
+  margin:0 0 6px;
+}
+.sheet ul{margin:4px 0 0;padding-left:20px}
+.sheet .placeholder{color:var(--muted);font-style:italic}
+
+.sig-block{display:flex;gap:24px;margin-top:32px;flex-wrap:wrap}
+.sig-col{flex:1 1 220px;min-width:0}
+.sig-col .party-label{font-family:var(--font-body);font-size:.74rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.sig-pad-wrap{
+  border:1px dashed var(--line);
+  border-radius:8px;
+  background:#fff;
+  position:relative;
+  touch-action:none;
+}
+.sig-pad-wrap canvas{display:block;width:100%;height:120px;cursor:crosshair}
+.sig-empty-msg{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-body);font-size:.78rem;color:#9a9c93;pointer-events:none;
+}
+.sig-foot{display:flex;justify-content:space-between;align-items:center;margin-top:6px;gap:8px}
+.sig-name{font-family:var(--font-doc);font-size:.88rem;border-top:1px solid var(--ink);padding-top:4px;margin-top:10px}
+.sig-stamp{font-size:.7rem;color:var(--muted);font-family:var(--font-body)}
+.btn-clear{
+  font-family:var(--font-body);font-size:.72rem;color:var(--muted);
+  background:none;border:none;cursor:pointer;text-decoration:underline;padding:0;
+}
+
+.actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:18px}
+.btn{
+  font-family:var(--font-body);
+  font-weight:600;
+  font-size:.9rem;
+  padding:11px 20px;
+  border-radius:9px;
+  border:1px solid transparent;
+  cursor:pointer;
+}
+.btn-primary{background:var(--accent);color:var(--accent-ink)}
+.btn-primary:disabled{opacity:.45;cursor:not-allowed}
+.btn-ghost{background:transparent;border-color:var(--line);color:var(--ink)}
+.status-msg{font-size:.82rem;color:var(--muted)}
+.status-msg.err{color:var(--danger)}
+
+footer.note{margin-top:26px;font-size:.76rem;color:var(--muted);max-width:68ch;line-height:1.5}
+</style>
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=Inter:wght@400;500;600;700&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<div class="wrap">
+  <header class="page">
+    <h1>Generador de Contratos</h1>
+    <p>Llena los datos del servicio, revisa el contrato tal como va quedando abajo, y fírmenlo ambos directamente en la pantalla. Al final descargas el PDF firmado — nada queda guardado aquí.</p>
+  </header>
+
+  <div class="layout">
+    <section class="panel">
+      <h2><span class="n">1</span> Datos del servicio</h2>
+      <div class="grid">
+        <div class="field">
+          <label for="f-prestador">Prestador del servicio</label>
+          <input id="f-prestador" type="text" value="Carlos Emmanuel Arana Solorio" placeholder="Tu nombre o el de tu negocio">
+        </div>
+        <div class="field">
+          <label for="f-cliente">Cliente</label>
+          <input id="f-cliente" type="text" placeholder="Nombre o razón social del cliente">
+        </div>
+        <div class="field full">
+          <label for="f-servicio">Descripción del proyecto o servicio</label>
+          <textarea id="f-servicio" placeholder="Ej. Diseño y desarrollo de sitio web de portafolio con tienda en línea para trajes de baño."></textarea>
+        </div>
+        <div class="field full">
+          <label for="f-entregables">Entregables (uno por línea)</label>
+          <textarea id="f-entregables" placeholder="Ej.&#10;Sitio web publicado y funcional&#10;Manual breve de uso&#10;Código fuente"></textarea>
+        </div>
+        <div class="field">
+          <label for="f-precio">Precio total (MXN)</label>
+          <input id="f-precio" type="text" inputmode="decimal" placeholder="Ej. 4,500">
+        </div>
+        <div class="field">
+          <label for="f-pago">Forma de pago</label>
+          <input id="f-pago" type="text" placeholder="Ej. 50% anticipo, 50% contra entrega">
+        </div>
+        <div class="field">
+          <label for="f-inicio">Fecha de inicio</label>
+          <input id="f-inicio" type="date">
+        </div>
+        <div class="field">
+          <label for="f-entrega">Fecha de entrega final</label>
+          <input id="f-entrega" type="date">
+        </div>
+        <div class="field full">
+          <label for="f-hitos">Avances o entregas parciales (opcional, uno por línea: hito — fecha)</label>
+          <textarea id="f-hitos" placeholder="Ej.&#10;Primer boceto — 15 de noviembre&#10;Versión revisada — 25 de noviembre"></textarea>
+        </div>
+        <div class="field">
+          <label for="f-lugar">Lugar de firma</label>
+          <input id="f-lugar" type="text" placeholder="Ej. Mexicali, Baja California">
+        </div>
+        <div class="field">
+          <label for="f-fecha-firma">Fecha de firma</label>
+          <input id="f-fecha-firma" type="date">
+        </div>
+      </div>
+
+      <div class="toggle-row">
+        <input type="checkbox" id="f-usar-derechos">
+        <label for="f-usar-derechos">Incluir cláusula de uso de imágenes o material (útil si el trabajo incluye fotos, video u otro material del cliente)</label>
+      </div>
+      <div class="sub field full" id="derechos-sub" hidden style="margin-top:8px">
+        <label for="f-derechos-texto">Condiciones de uso</label>
+        <textarea id="f-derechos-texto" placeholder="Ej. El material entregado podrá usarse únicamente para fines del proyecto descrito y no podrá publicarse ni cederse a terceros sin autorización por escrito del cliente."></textarea>
+      </div>
+
+      <div class="field full" style="margin-top:14px">
+        <label for="f-condiciones">Condiciones adicionales (opcional)</label>
+        <textarea id="f-condiciones" placeholder="Cualquier otro acuerdo que quieras dejar por escrito: revisiones incluidas, garantía, uso de herramientas del cliente, etc."></textarea>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2><span class="n">2</span> Vista previa del contrato</h2>
+      <div class="sheet-shell">
+        <div class="sheet" id="sheet"></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2><span class="n">3</span> Firmas</h2>
+      <div class="sig-block">
+        <div class="sig-col">
+          <div class="party-label">Prestador del servicio</div>
+          <div class="sig-pad-wrap"><canvas id="sig-a"></canvas><div class="sig-empty-msg" id="sig-a-msg">Firma aquí</div></div>
+          <div class="sig-foot">
+            <span class="sig-stamp" id="sig-a-stamp"></span>
+            <button class="btn-clear" data-clear="a">Borrar</button>
+          </div>
+        </div>
+        <div class="sig-col">
+          <div class="party-label">Cliente</div>
+          <div class="sig-pad-wrap"><canvas id="sig-b"></canvas><div class="sig-empty-msg" id="sig-b-msg">Firma aquí</div></div>
+          <div class="sig-foot">
+            <span class="sig-stamp" id="sig-b-stamp"></span>
+            <button class="btn-clear" data-clear="b">Borrar</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-primary" id="btn-download" disabled>Descargar PDF firmado</button>
+        <button class="btn btn-ghost" id="btn-clear-all">Limpiar formulario</button>
+        <span class="status-msg" id="status-msg"></span>
+      </div>
+    </section>
+  </div>
+
+  <footer class="note">Esta herramienta genera un contrato de prestación de servicios con cláusulas generales de uso común. No sustituye asesoría legal: para proyectos de mayor riesgo o monto, conviene que un abogado lo revise. Nada de lo que escribas aquí se guarda ni se envía a ningún lado — el PDF se arma en tu propio navegador.</footer>
+</div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const fields = ['prestador','cliente','servicio','entregables','precio','pago','inicio','entrega','hitos','lugar','fecha-firma','derechos-texto','condiciones'];
+  const ORD = ['Primera','Segunda','Tercera','Cuarta','Quinta','Sexta','Séptima','Octava','Novena','Décima'];
+  const sheetEl = $('sheet');
+  const btnDownload = $('btn-download');
+  const statusEl = $('status-msg');
+  const usarDerechos = $('f-usar-derechos');
+  const derechosSub = $('derechos-sub');
+
+  usarDerechos.addEventListener('change', () => {
+    derechosSub.hidden = !usarDerechos.checked;
+    render();
+  });
+
+  function val(id){ return ($('f-'+id) ? $('f-'+id).value : '').trim(); }
+
+  function fmtDate(iso){
+    if(!iso) return '';
+    const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+    const [y,m,d] = iso.split('-').map(Number);
+    if(!y||!m||!d) return iso;
+    return `${d} de ${meses[m-1]} de ${y}`;
+  }
+
+  function lines(text){
+    return text.split('\n').map(s=>s.trim()).filter(Boolean);
+  }
+
+  function esc(s){
+    return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function ph(s, placeholder){
+    const v = esc(s);
+    return v ? v : `<span class="placeholder">${placeholder}</span>`;
+  }
+
+  function buildClauses(){
+    const prestador = val('prestador');
+    const cliente = val('cliente');
+    const servicio = val('servicio');
+    const entregables = lines(val('entregables'));
+    const precio = val('precio');
+    const pago = val('pago');
+    const inicio = fmtDate(val('inicio'));
+    const entrega = fmtDate(val('entrega'));
+    const hitos = lines(val('hitos'));
+    const lugar = val('lugar');
+    const fechaFirma = fmtDate(val('fecha-firma'));
+    const incluirDerechos = usarDerechos.checked;
+    const derechosTexto = val('derechos-texto');
+    const condiciones = val('condiciones');
+
+    let ordIdx = 0;
+    const nextOrd = () => ORD[ordIdx++] || ('Cláusula ' + (ordIdx));
+
+    let html = '';
+    html += `<h3>Contrato de prestación de servicios</h3>`;
+    html += `<p class="sub-title">Entre ${ph(prestador,'[prestador del servicio]')} y ${ph(cliente,'[cliente]')}</p>`;
+
+    html += `<p class="clause">Este contrato se celebra entre <b>${ph(prestador,'[prestador del servicio]')}</b>, en adelante "el prestador", y <b>${ph(cliente,'[cliente]')}</b>, en adelante "el cliente", quienes acuerdan sujetarse a las siguientes cláusulas.</p>`;
+
+    html += `<div class="clause"><div class="clause-title">${nextOrd()} — Objeto</div>El prestador se compromete a realizar, a favor del cliente, el siguiente servicio: ${ph(servicio,'[descripción del proyecto o servicio]')}.</div>`;
+
+    html += `<div class="clause"><div class="clause-title">${nextOrd()} — Entregables</div>`;
+    if(entregables.length){
+      html += `El prestador entregará al cliente lo siguiente:<ul>${entregables.map(e=>`<li>${esc(e)}</li>`).join('')}</ul>`;
+    } else {
+      html += `<span class="placeholder">[lista de entregables]</span>`;
+    }
+    html += `</div>`;
+
+    html += `<div class="clause"><div class="clause-title">${nextOrd()} — Plazos</div>`;
+    html += `El servicio dará inicio el ${ph(inicio,'[fecha de inicio]')} y deberá quedar entregado en su totalidad a más tardar el ${ph(entrega,'[fecha de entrega]')}.`;
+    if(hitos.length){
+      html += ` Se acuerdan además los siguientes avances parciales:<ul>${hitos.map(h=>`<li>${esc(h)}</li>`).join('')}</ul>`;
+    }
+    html += `</div>`;
+
+    html += `<div class="clause"><div class="clause-title">${nextOrd()} — Precio y forma de pago</div>El cliente pagará al prestador la cantidad de <b>$${ph(precio,'[precio]')} MXN</b> por el servicio descrito. Forma de pago: ${ph(pago,'[forma de pago]')}.</div>`;
+
+    if(incluirDerechos){
+      html += `<div class="clause"><div class="clause-title">${nextOrd()} — Uso del material</div>${ph(derechosTexto,'[condiciones de uso del material entregado]')}</div>`;
+    }
+
+    html += `<div class="clause"><div class="clause-title">${nextOrd()} — Confidencialidad</div>Ambas partes se comprometen a mantener bajo reserva la información no pública a la que tengan acceso con motivo de este servicio.</div>`;
+
+    html += `<div class="clause"><div class="clause-title">${nextOrd()} — Cancelación</div>Cualquiera de las partes podrá dar por terminado este acuerdo antes de su conclusión, notificando por escrito a la otra parte. El cliente cubrirá la parte proporcional del trabajo ya realizado hasta ese momento.</div>`;
+
+    if(condiciones){
+      html += `<div class="clause"><div class="clause-title">${nextOrd()} — Condiciones adicionales</div>${esc(condiciones).replace(/\n/g,'<br>')}</div>`;
+    }
+
+    html += `<p class="clause">Firmado en ${ph(lugar,'[lugar]')}, el ${ph(fechaFirma,'[fecha de firma]')}.</p>`;
+
+    return html;
+  }
+
+  function render(){
+    sheetEl.innerHTML = buildClauses();
+    checkReady();
+  }
+
+  fields.forEach(id => { const el = $('f-'+id); if(el) el.addEventListener('input', render); });
+  ['inicio','entrega','fecha-firma'].forEach(id=>{ const el = $('f-'+id); if(el) el.addEventListener('change', render); });
+
+  // --- signature pads ---
+  function setupPad(canvasId, msgId, stampId){
+    const canvas = $(canvasId);
+    const msg = $(msgId);
+    const stamp = $(stampId);
+    const ctx = canvas.getContext('2d');
+    let drawing = false, hasInk = false, lastX=0, lastY=0;
+
+    function resize(){
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const prevData = hasInk ? canvas.toDataURL() : null;
+      canvas.width = rect.width * dpr;
+      canvas.height = 120 * dpr;
+      ctx.scale(dpr, dpr);
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = '#1b1e18';
+      if(prevData){
+        const img = new Image();
+        img.onload = () => ctx.drawImage(img, 0, 0, rect.width, 120);
+        img.src = prevData;
+      }
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    function pos(e){
+      const rect = canvas.getBoundingClientRect();
+      const p = e.touches ? e.touches[0] : e;
+      return {x: p.clientX - rect.left, y: p.clientY - rect.top};
+    }
+    function start(e){
+      e.preventDefault();
+      drawing = true;
+      const p = pos(e);
+      lastX = p.x; lastY = p.y;
+    }
+    function move(e){
+      if(!drawing) return;
+      e.preventDefault();
+      const p = pos(e);
+      ctx.beginPath();
+      ctx.moveTo(lastX, lastY);
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+      lastX = p.x; lastY = p.y;
+      if(!hasInk){
+        hasInk = true;
+        msg.style.display = 'none';
+        stamp.textContent = 'Firmado el ' + new Date().toLocaleString('es-MX', {dateStyle:'medium', timeStyle:'short'});
+        checkReady();
+      }
+    }
+    function end(){ drawing = false; }
+
+    canvas.addEventListener('mousedown', start);
+    canvas.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', end);
+    canvas.addEventListener('touchstart', start, {passive:false});
+    canvas.addEventListener('touchmove', move, {passive:false});
+    canvas.addEventListener('touchend', end);
+
+    return {
+      clear(){
+        const rect = canvas.getBoundingClientRect();
+        ctx.clearRect(0,0,rect.width,120);
+        hasInk = false;
+        msg.style.display = 'flex';
+        stamp.textContent = '';
+        checkReady();
+      },
+      hasInk(){ return hasInk; },
+      canvas
+    };
+  }
+
+  const padA = setupPad('sig-a','sig-a-msg','sig-a-stamp');
+  const padB = setupPad('sig-b','sig-b-msg','sig-b-stamp');
+
+  document.querySelectorAll('[data-clear]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      (btn.dataset.clear === 'a' ? padA : padB).clear();
+    });
+  });
+
+  $('btn-clear-all').addEventListener('click', () => {
+    fields.forEach(id => { const el = $('f-'+id); if(el) el.value = ''; });
+    $('f-prestador').value = 'Carlos Emmanuel Arana Solorio';
+    usarDerechos.checked = false;
+    derechosSub.hidden = true;
+    padA.clear();
+    padB.clear();
+    render();
+  });
+
+  function checkReady(){
+    const ready = val('cliente') && val('servicio') && padA.hasInk() && padB.hasInk();
+    btnDownload.disabled = !ready;
+  }
+
+  // --- PDF export ---
+  btnDownload.addEventListener('click', async () => {
+    statusEl.textContent = '';
+    statusEl.classList.remove('err');
+    btnDownload.disabled = true;
+    btnDownload.textContent = 'Generando…';
+    try {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({unit:'pt', format:'letter'});
+      const marginX = 56, pageW = 612, pageH = 792, maxW = pageW - marginX*2;
+      let y = 64;
+
+      function ensureSpace(h){
+        if(y + h > pageH - 70){ doc.addPage(); y = 64; }
+      }
+      function addTitle(text){
+        doc.setFont('times','bold'); doc.setFontSize(15);
+        ensureSpace(24);
+        doc.text(text, pageW/2, y, {align:'center'});
+        y += 22;
+      }
+      function addSub(text){
+        doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(110);
+        ensureSpace(16);
+        doc.text(text, pageW/2, y, {align:'center'});
+        y += 26;
+        doc.setTextColor(20);
+      }
+      function addHeading(text){
+        doc.setFont('helvetica','bold'); doc.setFontSize(9.5);
+        ensureSpace(16);
+        doc.text(text.toUpperCase(), marginX, y);
+        y += 13;
+      }
+      function addParagraph(text){
+        doc.setFont('times','normal'); doc.setFontSize(10.5);
+        const l = doc.splitTextToSize(text, maxW);
+        ensureSpace(l.length*14+10);
+        doc.text(l, marginX, y);
+        y += l.length*14 + 10;
+      }
+      function addList(items){
+        doc.setFont('times','normal'); doc.setFontSize(10.5);
+        items.forEach(it=>{
+          const l = doc.splitTextToSize('•  ' + it, maxW-10);
+          ensureSpace(l.length*14+2);
+          doc.text(l, marginX+6, y);
+          y += l.length*14+2;
+        });
+        y += 8;
+      }
+
+      const prestador = val('prestador') || '[prestador del servicio]';
+      const cliente = val('cliente') || '[cliente]';
+      const servicio = val('servicio') || '[descripción del servicio]';
+      const entregables = lines(val('entregables'));
+      const precio = val('precio') || '[precio]';
+      const pago = val('pago') || '[forma de pago]';
+      const inicio = fmtDate(val('inicio')) || '[fecha de inicio]';
+      const entrega = fmtDate(val('entrega')) || '[fecha de entrega]';
+      const hitos = lines(val('hitos'));
+      const lugar = val('lugar') || '[lugar]';
+      const fechaFirma = fmtDate(val('fecha-firma')) || '[fecha de firma]';
+      const incluirDerechos = usarDerechos.checked;
+      const derechosTexto = val('derechos-texto') || '[condiciones de uso del material]';
+      const condiciones = val('condiciones');
+
+      let ordIdx = 0;
+      const nextOrd = () => ORD[ordIdx++] || ('Cláusula ' + (ordIdx));
+
+      addTitle('Contrato de prestación de servicios');
+      addSub(`Entre ${prestador} y ${cliente}`);
+      addParagraph(`Este contrato se celebra entre ${prestador}, en adelante "el prestador", y ${cliente}, en adelante "el cliente", quienes acuerdan sujetarse a las siguientes cláusulas.`);
+
+      addHeading(nextOrd() + ' — Objeto');
+      addParagraph(`El prestador se compromete a realizar, a favor del cliente, el siguiente servicio: ${servicio}.`);
+
+      addHeading(nextOrd() + ' — Entregables');
+      if(entregables.length){
+        addParagraph('El prestador entregará al cliente lo siguiente:');
+        addList(entregables);
+      } else {
+        addParagraph('El prestador entregará al cliente lo acordado verbalmente entre las partes.');
+      }
+
+      addHeading(nextOrd() + ' — Plazos');
+      addParagraph(`El servicio dará inicio el ${inicio} y deberá quedar entregado en su totalidad a más tardar el ${entrega}.`);
+      if(hitos.length){
+        addParagraph('Se acuerdan además los siguientes avances parciales:');
+        addList(hitos);
+      }
+
+      addHeading(nextOrd() + ' — Precio y forma de pago');
+      addParagraph(`El cliente pagará al prestador la cantidad de $${precio} MXN por el servicio descrito. Forma de pago: ${pago}.`);
+
+      if(incluirDerechos){
+        addHeading(nextOrd() + ' — Uso del material');
+        addParagraph(derechosTexto);
+      }
+
+      addHeading(nextOrd() + ' — Confidencialidad');
+      addParagraph('Ambas partes se comprometen a mantener bajo reserva la información no pública a la que tengan acceso con motivo de este servicio.');
+
+      addHeading(nextOrd() + ' — Cancelación');
+      addParagraph('Cualquiera de las partes podrá dar por terminado este acuerdo antes de su conclusión, notificando por escrito a la otra parte. El cliente cubrirá la parte proporcional del trabajo ya realizado hasta ese momento.');
+
+      if(condiciones){
+        addHeading(nextOrd() + ' — Condiciones adicionales');
+        addParagraph(condiciones);
+      }
+
+      addParagraph(`Firmado en ${lugar}, el ${fechaFirma}.`);
+
+      // signatures
+      ensureSpace(150);
+      y += 10;
+      const colW = (maxW - 30)/2;
+      const sigY = y;
+      doc.addImage(padA.canvas.toDataURL('image/png'), 'PNG', marginX, sigY, colW, 70);
+      doc.addImage(padB.canvas.toDataURL('image/png'), 'PNG', marginX+colW+30, sigY, colW, 70);
+      doc.setDrawColor(40);
+      doc.line(marginX, sigY+78, marginX+colW, sigY+78);
+      doc.line(marginX+colW+30, sigY+78, marginX+colW+30+colW, sigY+78);
+      doc.setFont('times','normal'); doc.setFontSize(10);
+      doc.text(prestador, marginX, sigY+92);
+      doc.text(cliente, marginX+colW+30, sigY+92);
+      doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(120);
+      doc.text($('sig-a-stamp').textContent, marginX, sigY+104);
+      doc.text($('sig-b-stamp').textContent, marginX+colW+30, sigY+104);
+
+      const blob = doc.output('blob');
+      const safeCliente = cliente.replace(/[^a-z0-9áéíóúñ ]+/gi,'').trim().replace(/\s+/g,'-') || 'cliente';
+      const filename = `contrato-${safeCliente}.pdf`;
+
+      const downloads = await (window.claude && window.claude.use ? window.claude.use('downloads').catch(()=>null) : Promise.resolve(null));
+      if(downloads){
+        await downloads.save({filename, data: blob});
+        statusEl.textContent = 'PDF guardado.';
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(()=>URL.revokeObjectURL(url), 4000);
+        statusEl.textContent = 'PDF descargado.';
+      }
+    } catch(err){
+      statusEl.textContent = 'Hubo un problema generando el PDF. Intenta de nuevo.';
+      statusEl.classList.add('err');
+    } finally {
+      btnDownload.textContent = 'Descargar PDF firmado';
+      checkReady();
+    }
+  });
+
+  render();
+})();
+</script>
+</body></html>
