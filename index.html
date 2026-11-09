@@ -197,7 +197,6 @@ footer.note{margin-top:26px;font-size:.76rem;color:var(--muted);max-width:68ch;l
 <div class="wrap">
   <header class="page">
     <h1>Generador de Contratos</h1>
-    <p>Llena los datos del servicio, revisa el contrato tal como va quedando abajo, y fírmenlo ambos directamente en la pantalla. Al final descargas el PDF firmado — nada queda guardado aquí.</p>
   </header>
 
   <div class="layout">
@@ -206,7 +205,7 @@ footer.note{margin-top:26px;font-size:.76rem;color:var(--muted);max-width:68ch;l
       <div class="grid">
         <div class="field">
           <label for="f-prestador">Prestador del servicio</label>
-          <input id="f-prestador" type="text" value="Carlos Emmanuel Arana Solorio" placeholder="Tu nombre o el de tu negocio">
+          <input id="f-prestador" type="text" value="SlaxDev" placeholder="Tu nombre o el de tu negocio">
         </div>
         <div class="field">
           <label for="f-cliente">Cliente</label>
@@ -500,7 +499,7 @@ footer.note{margin-top:26px;font-size:.76rem;color:var(--muted);max-width:68ch;l
 
   $('btn-clear-all').addEventListener('click', () => {
     fields.forEach(id => { const el = $('f-'+id); if(el) el.value = ''; });
-    $('f-prestador').value = 'Carlos Emmanuel Arana Solorio';
+    $('f-prestador').value = 'SlaxDev';
     usarDerechos.checked = false;
     derechosSub.hidden = true;
     padA.clear();
